@@ -102,7 +102,7 @@ async def get_product_by_id(id: int, Authorize: AuthJWT = Depends()):
 
 
 # ID bo'yicha o'chirish ----------------------------------------------------------------------------------------------->
-@product_router.delete('/delete/{id}', status_code=status.HTTP_204_NO_CONTENT)
+@product_router.delete('/delete/{id}', status_code=status.HTTP_200_OK)
 async def delete_product_by_id(id: int, Authorize: AuthJWT = Depends()):
     #  Bu endpoint mahsulotni o'chirish uchun ishlatiladi
     try:
@@ -124,7 +124,7 @@ async def delete_product_by_id(id: int, Authorize: AuthJWT = Depends()):
                 "code": 200,
                 "message": f"Product with ID {id} has been deleted",
             }
-            return jsonable_encoder(data1)  # data qaytmadiii xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            return jsonable_encoder(data1)
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Product with ID {id} is not found")

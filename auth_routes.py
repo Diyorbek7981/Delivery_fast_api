@@ -2,7 +2,7 @@ import datetime
 from fastapi import APIRouter, status, Depends
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import or_
-from schemas import SignUpModel, LoginModel
+from schemas import SignUpModel, LoginModel, UserUpdate
 from database import session, engine
 from models import User
 from fastapi.exceptions import HTTPException
@@ -92,7 +92,8 @@ async def login(user: LoginModel, Authorize: AuthJWT = Depends()):
 
         token = {
             "access": access_token,
-            "refresh": refresh_token
+            "refresh": refresh_token,
+            "is_staff": db_user.is_staff,
         }
         response = {
             "success": True,
@@ -136,3 +137,47 @@ async def login_refresh(Authorize: AuthJWT = Depends()):
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Notog`ri refresh token')
+
+
+# Userni update qilish------------------------------------------------------------------------------------------------->
+@auth_router.put('/adm/user/update/{id}', status_code=status.HTTP_200_OK)
+async def update_product_by_id(id: int, update_data: UserUpdate, Authorize: AuthJWT = Depends()):
+    #  Bu endpoint mahsulotni yangilash uchun ishlatiladi
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Enter valid access token")
+
+    current_user = Authorize.get_jwt_subject()
+    user = session.query(User).filter(User.username == current_user).first()
+
+    if user.is_staff:
+        user_id = session.query(User).filter(User.id == id).first()
+        if user_id:
+            # update user_id
+            for key, value in update_data.dict(exclude_unset=True).items():
+                # qisman update qilish uchun exclude_unset true qoyiladi (yani faqat nomini yangilamoqchi bolsak)
+                setattr(user_id, key, value)
+                # Ushbu setattr ob'ektning atributlarini dinamik ravishda yangilaydi
+            session.commit()
+
+            data = {
+                "success": True,
+                "code": 200,
+                "message": f"Product with ID {id} has been updated",
+                "data": {
+                    "id": user_id.id,
+                    "name": user_id.username,
+                    "email": user_id.email,
+                    "is_staff": user_id.is_staff,
+                    "is_active": user_id.is_active
+                }
+            }
+            return jsonable_encoder(data)
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"User with ID {id} is not found")
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Only SuperAdmin is allowed to update product")
